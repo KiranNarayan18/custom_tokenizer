@@ -1,0 +1,28 @@
+[project]
+name = "custom-tokenizer"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Kiran Narayan", email = "kiran.narayan71@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+custom-tokenizer = "custom_tokenizer:main"
+
+[build-system]
+requires = ["uv_build>=0.12.8,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.4.0",
+    "tokenizers",
+    "transformers",
+    "datasets", 
+    "matplotlib",
+    "pandas",
+    "sacremoses"
+]
