@@ -13,4 +13,5 @@ wheels/
 
 
 notebooks/
-data/
+artifacts/
+*.jsonl
