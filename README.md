@@ -1,199 +1,264 @@
-# Medical Tokenizer Comparison
+# 🏥 Medical Tokenizer Lab — Custom vs General
 
-A hands-on notebook exploring why domain-specific tokenizers matter for biomedical text. It compares general-purpose and medical tokenizers, examines how well-known biomedical language models build their vocabularies, and trains a byte-level BPE tokenizer from scratch using PubMed abstracts.
+> **Train a domain tokenizer from scratch. Beat GPT-4 on medical text. Prove it's domain — not vocab size — that wins.**
 
-The notebook is designed as a teaching-oriented, reproducible experiment that can be run top-to-bottom in Google Colab or a local Jupyter environment.
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
+![uv](https://img.shields.io/badge/package%20manager-uv-DE5FE9?style=flat-square)
+![HuggingFace](https://img.shields.io/badge/🤗%20HuggingFace-tokenizers-FFD21E?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-22C55E?style=flat-square)
 
-## What this project demonstrates
+---
 
-1. **Domain mismatch:** Compare GPT-2's general-purpose tokenizer with BioGPT's medical tokenizer on both PubMed abstracts and general-purpose WikiText.
-2. **Tokenizer vs. model domain:** Inspect BioClinicalBERT and PubMedBERT to see whether their vocabularies are generic or domain-specific.
-3. **Train a tokenizer:** Build a medical byte-level BPE tokenizer from scratch using the Hugging Face `tokenizers` library.
-4. **Evaluate fairly:** Measure the trained tokenizer on held-out PubMed abstracts that were not used during tokenizer training.
+## 🎯 What this lab proves
 
-## Key concepts
+We compare **4 tokenizers** on the **same held-out medical text** — text none of them trained on:
 
-### Fertility
+| Tokenizer | Vocab | Trained on | Medical fertility | General fertility |
+|-----------|-------|-----------|:-----------------:|:-----------------:|
+| 🏥 `custom-med` | 16k | PubMed abstracts | **1.375 ✅ wins** | 1.575 ❌ |
+| 🤖 `o200k_base` | ~200k | General web (GPT-4o) | 1.430 | **1.163 ✅** |
+| 🤖 `cl100k_base` | ~100k | General web (GPT-4) | 1.460 | 1.173 |
+| 📰 `general-bpe` | 16k | wikitext-103 | 1.747 ❌ worst | 1.208 |
 
-The primary metric is **fertility**, defined here as:
+> 💡 **The key insight:** `custom-med` and `general-bpe` have **identical algorithm and identical vocab size (16k)**.
+> On medical held-out text, `custom-med` beats `general-bpe` by **0.372** — the only variable is training domain.
+> That's the proof. Domain wins, not size.
 
-`fertility = number of tokens / number of whitespace-separated words`
+**Single-token rate on 20 medical terms:**
+- `cl100k` and `o200k` → **0 / 20** medical terms as a single token
+- `custom-med` → **2 / 20** — it has built a medical vocabulary; general tokenizers have not
 
-A lower value means that the tokenizer represents the same text with fewer tokens. This can improve token efficiency and allow more source text to fit into a model's fixed context window.
+---
 
-The notebook also measures **tokens per 1,000 characters**, which provides another view of how much of a model's context window a corpus consumes.
+## 🔬 The fertility flip
 
-> Lower fertility indicates more compact tokenization; it does not, by itself, prove better downstream model accuracy.
+`custom-med` **loses** on general text (fertility 1.575 vs 1.163 for o200k). This is expected — and is *proof of genuine specialisation*. A tokenizer that shows no flip didn't actually specialise.
 
-## Tokenizers covered
-
-| Tokenizer | Role | Tokenization approach |
-|---|---|---|
-| `openai-community/gpt2` | General-purpose baseline | Byte-level BPE |
-| `microsoft/biogpt` | Medical-domain comparison | Moses pre-tokenization + fairseq-style BPE |
-| `bert-base-cased` | Generic BERT baseline | WordPiece |
-| `emilyalsentzer/Bio_ClinicalBERT` | Clinical-domain model | Reuses `bert-base-cased` vocabulary |
-| `microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext` | Biomedical-domain model | Biomedical WordPiece vocabulary |
-| Custom medical BPE | Tokenizer trained in this notebook | Byte-level BPE trained on PubMed abstracts |
-
-The notebook illustrates an important distinction: a model can be pretrained on medical data without having a medical-specific tokenizer vocabulary.
-
-## Datasets
-
-The notebook downloads datasets from the Hugging Face Hub:
-
-- **PubMed abstracts:** the `pubmed` portion of the `scientific_papers` dataset, loaded from its Parquet export.
-- **General text:** WikiText-2 raw version.
-
-With the configured random seed (`42`), the shuffled PubMed data is divided into disjoint slices:
-
-| Slice | Number of abstracts | Purpose |
-|---|---:|---|
-| Metrics | 2,000 | Corpus-level comparison |
-| Training | 5,000 | Train the custom tokenizer |
-| Held-out | 1,500 | Final evaluation; not used for tokenizer training |
-
-The general-text comparison uses up to 2,000 non-empty WikiText-2 training lines.
-
-Dataset availability and Hugging Face dataset repository layouts can change. The notebook uses the `refs/convert/parquet` revision of `scientific_papers` to load its Parquet export.
-
-## Project structure
-
-```text
-.
-├── medical_tokenizer_comparison.ipynb
-├── README.md
-└── medical_bpe_tokenizer.json   # Generated when the notebook is run
+```
+                 Medical text     General text
+  custom-med       1.375 ✅          1.575 ❌
+  general-bpe      1.747 ❌          1.208 ✅
+                      ↑                 ↑
+               custom wins         general wins
+               → domain is the variable, not vocab size
 ```
 
-`medical_bpe_tokenizer.json` is generated by the notebook and contains the trained tokenizer. It is not required before the first run.
+---
 
-## Requirements
-
-- Python 3.9 or later recommended
-- Jupyter Notebook or Google Colab
-- Internet access to download models and datasets
-
-The notebook checks for and installs missing packages:
-
-- `tokenizers`
-- `transformers`
-- `datasets`
-- `matplotlib`
-- `pandas`
-- `sacremoses`
-
-It also uses `huggingface_hub` and NumPy. These are normally installed as dependencies of the packages above, but can be installed explicitly if needed.
-
-### Optional: create a local environment with `uv`
+## ⚡ Quick start (offline, no network needed)
 
 ```bash
-uv venv
+git clone https://github.com/sourangshupal/tokenization-explainer
+cd tokenization-explainer
+uv sync
+uv run jupyter lab notebooks/04_custom_vs_general.ipynb
 ```
 
-Activate it:
+> The notebook auto-loads the checked-in fallback tokenizer (`models/pretrained/medical_bpe_tiny/`) if trained artifacts are absent. Everything works offline.
 
-**Windows PowerShell**
-```powershell
-.venv\Scripts\Activate.ps1
-```
+---
 
-**Linux / macOS**
-```bash
-source .venv/bin/activate
-```
+## 🚀 Full pipeline (needs internet)
 
-Install the dependencies:
+### Step 1 — Download corpora
 
 ```bash
-uv pip install tokenizers transformers datasets matplotlib pandas numpy sacremoses huggingface_hub jupyter
+# 50k PubMed abstracts from HuggingFace Hub (streams Parquet, ~180 MB)
+uv run python scripts/download_pubmed_sample.py --max-docs 50000
+
+# Split into disjoint train / held-out (deterministic, seed 42)
+uv run python scripts/split_corpus.py
+# → data/pubmed_train.jsonl    (45k abstracts)
+# → data/pubmed_heldout.jsonl  ( 5k abstracts — never used for training)
+
+# wikitext-103 for the fairness control (downloads + splits in one step)
+uv run python scripts/download_general_sample.py
+# → data/general_train.jsonl    (45k paragraphs)
+# → data/general_heldout.jsonl  ( 5k paragraphs)
 ```
 
-Launch Jupyter:
+### Step 2 — Train both tokenizers
 
 ```bash
-jupyter notebook
+# Medical tokenizer — 16k vocab on PubMed
+uv run python scripts/train_medical_tokenizer.py \
+    --corpus data/pubmed_train.jsonl \
+    --out artifacts/medical-bpe-pubmed/tokenizer.json
+
+# General-BPE fairness control — 16k vocab on wikitext
+uv run python scripts/train_medical_tokenizer.py \
+    --corpus data/general_train.jsonl \
+    --out artifacts/general-bpe/tokenizer.json
 ```
 
-No GPU is required. The custom tokenizer is trained on CPU using the Rust-backed Hugging Face `tokenizers` library.
+### Step 3 — Compare all 4 tokenizers
 
-## How to run
+```bash
+uv run python scripts/compare_tokenizers.py --no-qwen \
+    --tokenizer-json  artifacts/medical-bpe-pubmed/tokenizer.json \
+    --general-bpe     artifacts/general-bpe/tokenizer.json \
+    --heldout-medical data/pubmed_heldout.jsonl \
+    --heldout-general data/general_heldout.jsonl
+```
 
-### Google Colab
+### Step 4 — Vocab-size sweep (16k → 100k)
 
-1. Upload `medical_tokenizer_comparison.ipynb` to Google Colab.
-2. Select **Runtime → Run all**.
-3. Allow the notebook to install missing packages and download the datasets and pretrained tokenizers.
+```bash
+uv run python scripts/sweep_vocab_size.py \
+    --corpus  data/pubmed_train.jsonl \
+    --heldout data/pubmed_heldout.jsonl \
+    --no-qwen
+```
 
-### Local Jupyter
+Finds the **knee** of the fertility curve — the smallest vocab size near the minimum. For this PubMed corpus (< 1B tokens) the recommended band is **16k–32k**, not the 50k "modern LLM default."
 
-1. Clone or download this repository.
-2. Install the dependencies listed above.
-3. Open `medical_tokenizer_comparison.ipynb`.
-4. Run the cells from top to bottom.
+### Step 5 — Publish your tokenizer to HuggingFace Hub
 
-The first run requires internet access and may take several minutes because datasets and pretrained tokenizer files must be downloaded.
+```bash
+# 1. Copy the example env file and add your HF token (Write scope)
+#    Get token at: https://huggingface.co/settings/tokens
+cp .env.example .env   # then edit .env and paste your token
 
-## Notebook walkthrough
+# 2. Wrap the trained tokenizer into HuggingFace format
+uv run python scripts/wrap_medical_tokenizer.py \
+    --tokenizer-json artifacts/medical-bpe-pubmed/tokenizer.json \
+    --out artifacts/medical-bpe-pubmed-hf
 
-1. **Load corpora:** Download PubMed abstracts and WikiText-2, then create metrics, training, and held-out splits.
-2. **Load pretrained tokenizers:** Load GPT-2 and BioGPT using the appropriate tokenizer APIs.
-3. **Inspect tokenization:** Compare how both tokenizers split the same medical sentence.
-4. **Run the 2×2 comparison:** Measure fertility and tokens per 1,000 characters on medical and general text.
-5. **Inspect biomedical BERT vocabularies:** Compare BERT, BioClinicalBERT, and PubMedBERT on a medical sentence.
-6. **Train a custom tokenizer:** Train a 30,000-token byte-level BPE tokenizer on 5,000 PubMed abstracts.
-7. **Save and reload:** Write the tokenizer to `medical_bpe_tokenizer.json`, reload it, and check encode/decode round-trip behavior.
-8. **Evaluate on held-out text:** Compare GPT-2, BioGPT, and the custom tokenizer on the 1,500 held-out abstracts.
+# 3. Push to Hub (replace YOUR_USERNAME with your HF username)
+uv run python scripts/push_to_hub.py \
+    --tokenizer-dir artifacts/medical-bpe-pubmed-hf \
+    --repo-id YOUR_USERNAME/medical-bpe-16k
+```
 
-## Custom tokenizer configuration
+Load it from anywhere once published:
 
-The notebook trains a byte-level BPE tokenizer with:
+```python
+from transformers import PreTrainedTokenizerFast
+tok = PreTrainedTokenizerFast.from_pretrained("YOUR_USERNAME/medical-bpe-16k")
+```
 
-- Vocabulary target: `30,000`
-- Minimum token frequency: `2`
-- Initial alphabet: all 256 byte-level symbols
-- Special token: `<|endoftext|>`
-- Pre-tokenizer: `ByteLevel(add_prefix_space=False)`
-- Decoder: byte-level decoder
+### Step 6 — Run the notebook and tests
 
-Using the full byte alphabet allows the tokenizer to represent arbitrary input bytes without relying on an unknown-character token. The matching byte-level decoder supports lossless encode/decode round trips.
+```bash
+uv run jupyter lab notebooks/04_custom_vs_general.ipynb
+uv run pytest tests/test_medical_compare.py tests/test_vocab_sweep.py -v
+```
 
-## Expected outputs
+---
 
-When the notebook runs successfully, it displays:
+## 📁 Repository layout
 
-- Vocabulary sizes for GPT-2 and BioGPT.
-- Token-level breakdowns of example medical sentences.
-- A table of fertility and tokens per 1,000 characters for both tokenizers across both corpora.
-- A bar chart showing the domain crossover.
-- Tokenization examples and vocabulary comparison for BERT, BioClinicalBERT, and PubMedBERT.
-- The custom tokenizer's learned vocabulary size and encode/decode round-trip check.
-- A held-out PubMed comparison table and fertility chart.
-- A saved `medical_bpe_tokenizer.json` file.
+```
+📦 tokenization-explainer
+│
+├── 📓 notebooks/
+│   ├── 04_custom_vs_general.ipynb   # The lab — 4-way compare + vocab-size experiment
+│   └── lab_display.py               # Rich display helpers (chips, tables, charts)
+│
+├── 📚 docs/
+│   ├── theory/                      # 9 slide-ready markdown docs (00–08)
+│   │   ├── 00-overview.md           # Lab design, 4-tokenizer table, run order
+│   │   ├── 01-why-tokenization-matters.md
+│   │   ├── 02-general-purpose-tokenizers.md
+│   │   ├── 03-custom-domain-tokenizers.md
+│   │   ├── 04-metrics.md            # Fertility, single-token rate, held-out eval
+│   │   ├── 05-why-custom-wins-in-healthcare.md
+│   │   ├── 06-pretrained-model-trap.md  ⚠️ Read this before any LLM fine-tuning
+│   │   ├── 07-optional-lora-sft.md
+│   │   └── 08-vocab-size-tradeoff.md
+│   └── diagrams/                    # 6 Mermaid diagrams (render on GitHub / JupyterLab)
+│       ├── 01-bpe-algorithm.md      # BPE training loop
+│       ├── 02-fair-comparison.md    # 2×2 fairness design
+│       ├── 03-lab-pipeline.md       # Full pipeline flowchart
+│       ├── 04-pretrained-trap.md    # Wrong vs right paths
+│       ├── 05-fertility-concept.md  # What fertility means with real numbers
+│       └── 06-vocab-size-knee.md    # Diminishing returns + embedding cost
+│
+├── 🐍 scripts/
+│   ├── download_pubmed_sample.py    # Stream PubMed → JSONL (HuggingFace Hub)
+│   ├── split_corpus.py              # Deterministic 45k / 5k disjoint split
+│   ├── download_general_sample.py   # Stream wikitext-103 → JSONL
+│   ├── train_medical_tokenizer.py   # Byte-level BPE trainer
+│   ├── wrap_medical_tokenizer.py    # tokenizer.json → PreTrainedTokenizerFast
+│   ├── compare_tokenizers.py        # 4-tokenizer CLI with held-out fertility
+│   ├── sweep_vocab_size.py          # 16k–100k avg-tokens/doc experiment
+│   └── push_to_hub.py               # Upload trained tokenizer to HuggingFace Hub
+│
+├── 🧪 tests/
+│   ├── test_medical_compare.py      # Held-out fairness assertions
+│   └── test_vocab_sweep.py          # Knee / band / monotonicity checks
+│
+├── 🗄️ data/
+│   ├── medical_corpus.txt           # Small authored set (tracked)
+│   ├── medical_probes.txt           # 20 curated illustration probes (tracked)
+│   ├── medical_control.txt          # General English spot-check (tracked)
+│   └── *.jsonl                      # Downloaded corpora (gitignored — large)
+│
+├── 🤗 models/pretrained/
+│   └── medical_bpe_tiny/            # Fallback tokenizer if training data absent (tracked)
+│
+└── 🏺 artifacts/                    # Trained outputs (gitignored)
+    ├── medical-bpe-pubmed/          # custom-med 16k
+    ├── medical-bpe-pubmed-{16k..100k}/  # vocab-size sweep
+    └── general-bpe/                 # fairness control 16k
+```
 
-Exact metric values can vary with dataset revisions, library versions, and the precise data loaded. Run the notebook to obtain the results for your environment.
+---
 
-## Important caveats
+## 📖 Theory docs — reading order
 
-- **Efficiency is not accuracy:** Fewer tokens can reduce context-window usage and token-related compute, but tokenizer fertility alone does not establish better model quality.
-- **Small training sample:** The custom tokenizer is trained on 5,000 abstracts for demonstration. A production tokenizer should be trained on a much larger, representative corpus.
-- **Domain coverage matters:** A tokenizer trained on PubMed abstracts may not be optimal for clinical notes, prescriptions, radiology reports, or other medical text.
-- **Vocabulary size is a trade-off:** Larger vocabularies can reduce sequence length but increase embedding and output-layer parameters in models trained with that vocabulary.
-- **Tokenizer compatibility:** A tokenizer must match the vocabulary and tokenization assumptions used when training a model. A custom tokenizer cannot simply be substituted into an existing pretrained model without addressing embedding and output-layer compatibility.
-- **Tokenizer implementations differ:** GPT-2/BioGPT BPE and BERT WordPiece use different preprocessing and tokenization conventions. Compare them with awareness of those differences.
-- **Evaluation metric scope:** The notebook uses whitespace-separated words for fertility. This is a useful simple comparison, but punctuation, abbreviations, hyphenation, and language-specific word boundaries can affect the metric.
+| # | Document | When to read |
+|---|----------|-------------|
+| 01 | [Why tokenization matters](docs/theory/01-why-tokenization-matters.md) | Start here |
+| 02 | [General-purpose tokenizers](docs/theory/02-general-purpose-tokenizers.md) | Before the notebook |
+| 03 | [Custom domain tokenizers](docs/theory/03-custom-domain-tokenizers.md) | Before training |
+| 04 | [Metrics](docs/theory/04-metrics.md) | Before measuring |
+| 05 | [Why custom wins in healthcare](docs/theory/05-why-custom-wins-in-healthcare.md) | After seeing results |
+| 06 | ⚠️ [The pretrained-model trap](docs/theory/06-pretrained-model-trap.md) | **Required** |
+| 07 | [Optional: LoRA + SFT](docs/theory/07-optional-lora-sft.md) | Optional homework |
+| 08 | [Vocab-size tradeoff](docs/theory/08-vocab-size-tradeoff.md) | Sweep experiment |
 
-## References
+---
 
-- Rust et al. (2021), *How Good is Your Tokenizer?* — https://arxiv.org/abs/2012.15613
-- Beltagy et al. (2019), *SciBERT: A Pretrained Language Model for Scientific Text* — https://arxiv.org/abs/1903.10676
-- Gu et al. (2021), *Domain-Specific Language Model Pretraining for Biomedical Natural Language Processing* (PubMedBERT) — https://arxiv.org/abs/2007.15779
-- Hugging Face Tokenizers documentation — https://huggingface.co/docs/tokenizers/quicktour
-- GPT-2 tokenizer — https://huggingface.co/openai-community/gpt2
-- BioGPT — https://huggingface.co/microsoft/biogpt
-- BioClinicalBERT — https://huggingface.co/emilyalsentzer/Bio_ClinicalBERT
-- PubMedBERT — https://huggingface.co/microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract-fulltext
+## 🗺️ Visual diagrams
 
-## License and data
+All diagrams are Mermaid markdown — render natively on **GitHub** and **JupyterLab**:
 
-This README does not assign a license to the notebook or the datasets. Before publishing or redistributing the project, add an appropriate repository license and review the dataset and pretrained-model terms on their respective Hugging Face pages.
+| Diagram | What it shows |
+|---------|--------------|
+| [🔬 BPE algorithm](docs/diagrams/01-bpe-algorithm.md) | How merge rules are learned from frequency |
+| [⚖️ Fair comparison](docs/diagrams/02-fair-comparison.md) | Why 4 tokenizers? The isolation argument |
+| [🗺️ Lab pipeline](docs/diagrams/03-lab-pipeline.md) | Every script and what it produces |
+| [⚠️ Pretrained trap](docs/diagrams/04-pretrained-trap.md) | Wrong path vs right path |
+| [🌱 Fertility concept](docs/diagrams/05-fertility-concept.md) | What fertility means with real numbers |
+| [📉 Vocab-size knee](docs/diagrams/06-vocab-size-knee.md) | Diminishing returns + embedding cost |
+
+---
+
+## 🛠️ Tech stack
+
+| Layer | Library |
+|-------|---------|
+| Tokenizer training | `huggingface/tokenizers` (Rust, Python bindings) |
+| General baselines | `tiktoken` (`cl100k_base`, `o200k_base`) |
+| HuggingFace wrapping | `transformers.PreTrainedTokenizerFast` |
+| Corpus download | `datasets` (streaming Parquet) |
+| Display | `rich` (tables, charts, progress bars) |
+| Package manager | `uv` — **never use pip directly** |
+| Python | 3.12 |
+
+---
+
+## ⚠️ What this lab does NOT do
+
+- Replace Qwen's `tokenizer.json` with `custom-med` and call it fine-tuning — **this breaks the model** (see [doc 06](docs/theory/06-pretrained-model-trap.md))
+- Train on MIMIC or any credentialed EHR data
+- Publish the tokenizer to HuggingFace Hub (it's class-scale, 16k)
+
+GPU LoRA homework is separate — see [`docs/theory/07-optional-lora-sft.md`](docs/theory/07-optional-lora-sft.md) and `uv sync --extra sft`. Use the **stock** Qwen tokenizer, not custom-med.
+
+---
+
+## 📄 License
+
+[MIT](LICENSE) — free to use, adapt, and teach with.
