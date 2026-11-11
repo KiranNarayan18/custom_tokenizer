@@ -24,5 +24,7 @@ dev = [
     "datasets", 
     "matplotlib",
     "pandas",
-    "sacremoses"
+    "sacremoses",
+    "tiktoken",
+    "python-dotenv"
 ]
