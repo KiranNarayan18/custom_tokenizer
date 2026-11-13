@@ -1,0 +1,100 @@
+custom-med tokenizer: artifacts\medical-bpe-pubmed\tokenizer.json
+                              Probe piece counts                               
+                                                                               
+  probe               cl100k   o200k   custom-med   general-bpe   winner       
+ ───────────────────────────────────────────────────────────────────────────── 
+  empagliflozin 10        10       9            9             8   general-bpe  
+  mg daily                                                                     
+  acetylcholinester        7       6            3             8   custom-med   
+  ase inhibitor                                                                
+  BRCA1 pathogenic         6       5            5             6   tie          
+  variant                                                                      
+  ICD-10-CM E11.65        10      10            9            11   custom-med   
+  serum creatinine        11      11            8            13   custom-med   
+  1.4 mg/dL                                                                    
+  β-lactam allergy         5       5            5             7   tie          
+  community-acquire        4       4            5             6   tie          
+  d pneumonia                                                                  
+  left lower lobe          5       5            4             5   custom-med   
+  consolidation                                                                
+  Naïve CD4+ T             8       8            8             9   tie          
+  cells                                                                        
+  COVID-19 mRNA            5       6            7             7   cl100k       
+  vaccine                                                                      
+  metformin 1000 mg        9       8            6             7   custom-med   
+  twice daily                                                                  
+  hemoglobin A1c          10      10            8             9   custom-med   
+  8.2%                                                                         
+  troponin I               5       5            3             6   custom-med   
+  elevated                                                                     
+  NT-proBNP 4200           9      10            9            13   tie          
+  pg/mL                                                                        
+  levothyroxine 75        10       9            8             8   tie          
+  μg daily                                                                     
+  vancomycin trough        9      11           10            11   cl100k       
+  18 μg/mL                                                                     
+  ST-elevation             8       6            6            11   tie          
+  myocardial                                                                   
+  infarction                                                                   
+  chronic kidney           7       7            5             6   custom-med   
+  disease stage 4                                                              
+  HER2-negative            5       5            6             7   tie          
+  breast cancer                                                                
+  oseltamivir 75 mg       10       9            9             9   tie          
+  twice daily                                                                  
+                                                                               
+            Medical probes (illustration)            
+                                                     
+  tokenizer     fertility   tok/100ch   mean pieces  
+ ─────────────────────────────────────────────────── 
+  cl100k            2.250       31.16          7.65  
+  o200k             2.191       30.35          7.45  
+  custom-med        1.956       27.09          6.65  
+  general-bpe       2.456       34.01          8.35  
+                                                     
+ General-English control (custom-med is not required 
+                       to win)                       
+                                                     
+  tokenizer     fertility   tok/100ch   mean pieces  
+ ─────────────────────────────────────────────────── 
+  cl100k            1.218       20.82         15.93  
+  o200k             1.212       20.73         15.85  
+  custom-med        1.358       23.21         17.75  
+  general-bpe       1.247       21.31         16.30  
+                                                     
+              Single-token rate on domain terms               
+                                                              
+  tokenizer     single-tok rate   (terms encoded as 1 piece)  
+ ──────────────────────────────────────────────────────────── 
+  cl100k                   0.0%                         0/20  
+  o200k                    0.0%                         0/20  
+  custom-med              40.0%                         8/20  
+  general-bpe              0.0%                         0/20  
+                                                              
+held-out: 5000 docs from data\pubmed_heldout.jsonl
+  Held-out PubMed abstracts — FAIR eval (custom-med  
+                     should win)                     
+                                                     
+  tokenizer     fertility   tok/100ch   mean pieces  
+ ─────────────────────────────────────────────────── 
+  cl100k            1.483       21.77        240.67  
+  o200k             1.453       21.32        235.78  
+  custom-med        1.263       18.54        204.94  
+  general-bpe       1.488       21.83        241.35  
+                                                     
+
+Medical held-out winner: custom-med (fertility 1.263)
+
+held-out: 5000 docs from data\general_heldout.jsonl
+  Held-out general English — custom-med expected to  
+                        lose                         
+                                                     
+  tokenizer     fertility   tok/100ch   mean pieces  
+ ─────────────────────────────────────────────────── 
+  cl100k            1.179       22.06        161.89  
+  o200k             1.166       21.82        160.13  
+  custom-med        1.274       23.84        174.89  
+  general-bpe       1.073       20.09        147.40  
+                                                     
+General held-out winner: general-bpe (fertility 1.073)
+
